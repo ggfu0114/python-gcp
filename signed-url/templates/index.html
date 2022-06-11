@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" type="text/css"
+    href="https://unpkg.com/file-upload-with-preview/dist/file-upload-with-preview.min.css" />
+  <script src="https://unpkg.com/file-upload-with-preview/dist/file-upload-with-preview.iife.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <title>Upload Image</title>
+</head>
+
+<body>
+  <div class="custom-file-container" data-upload-id="myFirstImage"></div>
+  <button onclick="uploadImage()">Upload</button>
+</body>
+
+<script>
+  const upload = new FileUploadWithPreview.FileUploadWithPreview('myFirstImage', {
+    maxFileCount: 5, multiple: true, text: {
+      browse: 'Choose',
+      chooseFile: 'Take your pick...',
+      label: 'Choose Files to Upload',
+    },
+  });
+  let getSignedUrl = async (f) => {
+    let fileName = f.name.split(':')[0];
+    return $.get(`/gen_signed_url?n=${fileName}&t=${f.type}`, (url) => {
+      return url
+    })
+  }
+  let uploadFileToGCS = async (f, signedUrl) => {
+
+    return $.ajax({
+      method: "PUT",
+      processData: false,
+      headers: {
+        'X-Goog-Content-Length-Range': '1,5000000',
+        'Content-Type': f.type,
+      },
+      data: f,
+      url: signedUrl,
+    });
+
+  }
+
+  let uploadImage = async () => {
+    for (let f of upload.cachedFileArray) {
+      let singUrl = await getSignedUrl(f)
+      console.log('singUrl', singUrl)
+      let result = await uploadFileToGCS(f, singUrl)
+    }
+  }
+</script>
+
+</html>
